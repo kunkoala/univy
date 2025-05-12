@@ -1,2 +1,5 @@
 src/univy/output/*
 output
+
+.env
+.env.local
