@@ -1,27 +1,33 @@
 from typing import Any
 
-import os
 from pydantic import PostgresDsn, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from univy.constants import Environment
 
 
-class Config(BaseSettings):
-    DATABASE_URL: PostgresDsn
-    OPENAI_API_KEY: str
+class CustomBaseSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+    )
 
-    SITE_DOMAIN: str = "myapp.com"
+
+class Config(CustomBaseSettings):
+    # DATABASE_URL: PostgresDsn
+    DATABASE_ASYNC_URL: PostgresDsn
+    DATABASE_POOL_SIZE: int = 16
+    DATABASE_POOL_TTL: int = 60 * 20  # 20 minutes
+    DATABASE_POOL_PRE_PING: bool = True
 
     ENVIRONMENT: Environment = Environment.LOCAL
 
     SENTRY_DSN: str | None = None
 
-    CORS_ORIGINS: list[str]
+    CORS_ORIGINS: list[str] = ["*"]
     CORS_ORIGINS_REGEX: str | None = None
-    CORS_HEADERS: list[str]
+    CORS_HEADERS: list[str] = ["*"]
 
-    APP_VERSION: str = "1"
+    APP_VERSION: str = "0.1"
 
     @model_validator(mode="after")
     def validate_sentry_non_local(self) -> "Config":
@@ -30,9 +36,6 @@ class Config(BaseSettings):
 
         return self
 
-    model_config = SettingsConfigDict(
-        case_sensitive=True, env_file=".env"
-    )
 
 settings = Config()
 

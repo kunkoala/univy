@@ -27,8 +27,8 @@ target_metadata = metadata
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
-DATABASE_URL = str(settings.DATABASE_URL)
-db_driver = settings.DATABASE_URL.scheme
+DATABASE_URL = str(settings.DATABASE_ASYNC_URL)
+db_driver = settings.DATABASE_ASYNC_URL.scheme
 db_driver_parts = db_driver.split("+")
 if len(db_driver_parts) > 1:
     sync_scheme = db_driver_parts[0].strip()
