@@ -1,6 +1,6 @@
 from typing import Any
 
-from pydantic import PostgresDsn, model_validator
+from pydantic import PostgresDsn, model_validator, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from univy.constants import Environment
@@ -13,11 +13,11 @@ class CustomBaseSettings(BaseSettings):
 
 
 class Config(CustomBaseSettings):
-    # DATABASE_URL: PostgresDsn
-    DATABASE_ASYNC_URL: PostgresDsn
     DATABASE_POOL_SIZE: int = 16
     DATABASE_POOL_TTL: int = 60 * 20  # 20 minutes
     DATABASE_POOL_PRE_PING: bool = True
+
+    AGE_GRAPH_NAME: str = "univy_graph"
 
     ENVIRONMENT: Environment = Environment.LOCAL
 
@@ -28,6 +28,30 @@ class Config(CustomBaseSettings):
     CORS_HEADERS: list[str] = ["*"]
 
     APP_VERSION: str = "0.1"
+
+    POSTGRES_USERNAME: str
+    POSTGRES_PASSWORD: str
+    POSTGRES_HOST: str
+    POSTGRES_PORT: int
+    POSTGRES_DB: str
+
+    @computed_field
+    @property
+    def DATABASE_ASYNC_URL(self) -> PostgresDsn:
+        """
+        The SQLALCHEMY_DATABASE_URI for the application.
+
+        Returns:
+            PostgresDsn: The PostgresDsn for the application.
+        """
+        return PostgresDsn.build(
+            scheme="postgresql+asyncpg",
+            username=self.POSTGRES_USERNAME,
+            password=self.POSTGRES_PASSWORD,
+            host=self.POSTGRES_HOST,
+            port=self.POSTGRES_PORT,
+            path=self.POSTGRES_DB,
+        )
 
     @model_validator(mode="after")
     def validate_sentry_non_local(self) -> "Config":

@@ -4,26 +4,18 @@ from typing import AsyncGenerator
 # import sentry_sdk
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
+
 from univy.config import app_configs, settings
 
 
-# @asynccontextmanager
-# async def lifespan(_application: FastAPI) -> AsyncGenerator:
-#     # Startup
-#     pool = aioredis.ConnectionPool.from_url(
-#         str(settings.REDIS_URL), max_connections=10, decode_responses=True
-#     )
-#     redis_init.redis_client = aioredis.Redis(connection_pool=pool)
-
-#     yield
-
-#     if settings.ENVIRONMENT.is_testing:
-#         return
-#     # Shutdown
-#     await pool.disconnect()
+@asynccontextmanager
+async def lifespan(_application: FastAPI) -> AsyncGenerator:
+    # Startup
+    yield
+    # Shutdown
 
 
-app = FastAPI(**app_configs)
+app = FastAPI(**app_configs, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -39,11 +31,6 @@ app.add_middleware(
 #         dsn=settings.SENTRY_DSN,
 #         environment=settings.ENVIRONMENT,
 #     )
-
-
-@app.get("/")
-async def root() -> dict[str, str]:
-    return {"message": "Hello World"}
 
 
 @app.get("/healthcheck", include_in_schema=False)
