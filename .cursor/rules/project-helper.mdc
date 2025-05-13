@@ -1,0 +1,138 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+⚙️ Stack-Specific Cursor Rules: Tauri + React + FastAPI + LightRAG
+
+🧠 General Philosophy
+- Build modular, functional components.
+- Embrace RORO (Receive Object, Return Object) for all logic-heavy functions.
+- Type everything: use Pydantic (v2) for schemas, TypedDict for structured intermediate data.
+- Always handle edge cases up-front using early returns (guard clauses).
+- Prioritize developer ergonomics for debugging in desktop + API dual-layered stack.
+
+📦 Backend (FastAPI) Rules
+**Structure (Modular Approach, All Domains in src/)**
+- Store all domain/module directories inside the `src/` folder.
+- `src/` is the highest level of the app, containing common models, configs, and constants, etc.
+- `src/main.py` is the root of the project, which inits the FastAPI app.
+- Each package/module has its own:
+  - `router.py` (core of the module, all endpoints)
+  - `schemas.py` (Pydantic models)
+  - `models.py` (DB models)
+  - `service.py` (module-specific business logic)
+  - `dependencies.py` (router dependencies)
+  - `constants.py` (module-specific constants and error codes)
+  - `config.py` (e.g. env vars)
+  - `utils.py` (non-business logic functions, e.g. response normalization, data enrichment)
+  - `exceptions.py` (module-specific exceptions, e.g. PostNotFound, InvalidUserData)
+- When a package requires services, dependencies, or constants from other packages, import them with an explicit module name (no relative imports for cross-package usage).
+
+Example:
+src/
+├── main.py
+├── common/
+│   ├── config.py
+│   ├── constants.py
+│   └── models.py
+├── document/
+│   ├── router.py
+│   ├── schemas.py
+│   ├── models.py
+│   ├── service.py
+│   ├── dependencies.py
+│   ├── constants.py
+│   ├── config.py
+│   ├── utils.py
+│   └── exceptions.py
+├── rag/
+│   ├── router.py
+│   ├── schemas.py
+│   ├── models.py
+│   ├── service.py
+│   ├── dependencies.py
+│   ├── constants.py
+│   ├── config.py
+│   ├── utils.py
+│   └── exceptions.py
+├── db/
+│   └── vectorstore.py
+├── utils/
+│   └── logger.py
+│   └── error_handler.py
+
+- This modular pattern keeps each feature self-contained and easier to maintain, test, and extend.
+
+**Routing & Handlers**
+- Use named exports for routes: def get_router() -> APIRouter
+- Prefer @router.post(...) over @router.api_route(..., methods=[...])
+- Keep routes thin – offload business logic to services/
+
+**FastAPI Specific**
+- Use async def for all I/O: db, embedding models, file operations
+- Use Annotated + Depends for shared dependencies
+- Use Pydantic @field_validator and model_config for consistent data validation
+- Use lifespan context for startup logic (model loading, vector store init)
+
+**Error Handling**
+- Guard clause for missing files, invalid queries, etc.
+- Return meaningful HTTPException with status_code and detail
+- Use RequestValidationError handler globally for schema issues
+- Log all errors with context (utils/logger.py)
+
+🧬 RAG Rules (LightRAG Integration)
+- All documents must be parsed only once and cached (e.g. JSON/Markdown on disk or S3).
+- Store parsed chunks in a vector store postgreSQL with metadata (title, authors, source, chunk idx, page number, etc) to enable referencing and highlighting documents in the frontend.
+- Ensure every query goes through:
+  - Input validation
+  - Vector DB search (LightRAG)
+  - Context formatting (e.g. f"Context: {chunk}\nQuestion: {query}")
+  - LLM call
+- Structure responses: {"answer": ..., "source_docs": [...]}
+
+🧩 Frontend (Tauri + React + Mantine)
+**Folder Structure (React)**
+src/
+├── components/
+│   ├── DocumentViewer.tsx
+│   ├── QueryInput.tsx
+│   └── SidebarNotes.tsx
+├── pages/
+│   ├── Home.tsx
+│   └── DocumentUpload.tsx
+├── hooks/
+│   └── useRagQuery.ts
+├── services/
+│   └── api.ts             # Fetch utils with RORO
+├── types/
+│   └── api.ts             # API request/response types
+
+**Design & Behavior**
+- Use Mantine's accessible components for all UI.
+- Embrace declarative hooks (e.g., useRagQuery) and stateful logic via Zustand or useContext.
+- For every user interaction (query, upload, highlight):
+  - Show loading state
+  - Provide feedback or error (Toast/Notification)
+  - Highlight source span when AI responds (contextual anchor)
+
+🧪 API-UI Contract
+- Use shared schema types (can be auto-generated using pydantic2ts) to avoid drift:
+  - QueryRequest, QueryResponse
+  - DocumentMeta, ParsedChunk
+- Avoid raw strings/lists in API – prefer structured models
+
+⚡ Performance Principles
+- 🧵 All file parsing, embedding, and LLM calls must be async
+- 🧠 Cache parsed PDFs and embeddings locally or in vector DB
+- 🔁 Use deduplicated embeddings (hashed chunks) for same documents
+- 🧠 Preload common LLM contexts or personas if using local models
+- 🔍 Add fuzzy search on document list using fuse.js or similar
+
+🛠 Integration: Tauri + API
+- Use Tauri's invoke to call backend endpoints
+- Avoid calling system shell for embedding logic – route everything via FastAPI
+
+
+
+- Use a persistent storage path in Tauri to cache uploaded/parsed docs 
