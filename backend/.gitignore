@@ -1,6 +1,8 @@
 # custom defined
 src/univy/output/*
 output
+mylocal_db
+logfile
 
 # lightrag
 rag_storage

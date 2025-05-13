@@ -1,18 +1,19 @@
 from typing import Any
 
-from pydantic import PostgresDsn, RedisDsn, model_validator
-from pydantic_settings import BaseSettings
+import os
+from pydantic import PostgresDsn, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from src.univy.constants import Environment
+from univy.constants import Environment
 
 
 class Config(BaseSettings):
     DATABASE_URL: PostgresDsn
-    REDIS_URL: RedisDsn
+    OPENAI_API_KEY: str
 
     SITE_DOMAIN: str = "myapp.com"
 
-    ENVIRONMENT: Environment = Environment.PRODUCTION
+    ENVIRONMENT: Environment = Environment.LOCAL
 
     SENTRY_DSN: str | None = None
 
@@ -29,6 +30,9 @@ class Config(BaseSettings):
 
         return self
 
+    model_config = SettingsConfigDict(
+        case_sensitive=True, env_file=".env"
+    )
 
 settings = Config()
 
