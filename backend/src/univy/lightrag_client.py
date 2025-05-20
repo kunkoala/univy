@@ -45,4 +45,16 @@ class LightRAGClient:
                 return await client.get(url, headers=self.headers)
         return await do_get()
 
+    async def clear_documents(self) -> Dict[str, Any]:
+        """
+        Send a DELETE request to /documents to clear all documents from the RAG system.
+        Returns the ClearDocumentsResponse (status, message) or an error dict.
+        """
+        url = f"{self.base_url}/documents"
+        @self._handle_response
+        async def do_delete():
+            async with httpx.AsyncClient() as client:
+                return await client.delete(url, headers=self.headers)
+        return await do_delete()
+
     # You can add more methods for other endpoints as needed

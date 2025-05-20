@@ -2,14 +2,17 @@ import os
 from .pdfreader import PdfParserApp
 import tempfile
 from univy.lightrag_client import LightRAGClient
+from fastapi import UploadFile
 
-async def process_pdf_upload(file_content: bytes, filename: str, lightrag_client: LightRAGClient) -> dict:
+
+async def process_pdf_upload(file: UploadFile, lightrag_client: LightRAGClient) -> dict:
     """
     Save uploaded file content, parse with PdfParserApp (MinerU), extract markdown, and upload it as a single text to LightRAG via HTTP API.
     """
     # Save to temp file
-    with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(filename)[1]) as tmp:
-        tmp.write(file_content)
+    with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as tmp:
+        content = await file.read()
+        tmp.write(content)
         tmp_path = tmp.name
 
     output_dir = tempfile.mkdtemp(prefix="minerU_")
