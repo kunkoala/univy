@@ -33,6 +33,9 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Install Ollama
+RUN curl -fsSL https://ollama.com/install.sh | sh
+
 # Copy only necessary files from builder
 COPY --from=builder /root/.local /root/.local
 COPY ./lightrag ./lightrag
@@ -48,6 +51,9 @@ RUN mkdir -p /app/data/rag_storage /app/data/inputs
 # Docker data directories
 ENV WORKING_DIR=/app/data/rag_storage
 ENV INPUT_DIR=/app/data/inputs
+
+# Pull the nomic-embed-text model
+RUN ollama pull nomic-embed-text
 
 # Expose the default port
 EXPOSE 9621
