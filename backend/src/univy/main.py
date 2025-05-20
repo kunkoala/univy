@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
 from univy.config import app_configs, settings
+from univy.api import api_router
 
 
 @asynccontextmanager
@@ -32,6 +33,7 @@ app.add_middleware(
 #         environment=settings.ENVIRONMENT,
 #     )
 
+app.include_router(api_router)
 
 @app.get("/healthcheck", include_in_schema=False)
 async def healthcheck() -> dict[str, str]:

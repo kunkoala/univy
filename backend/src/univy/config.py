@@ -35,6 +35,9 @@ class Config(CustomBaseSettings):
     POSTGRES_PORT: int
     POSTGRES_DB: str
 
+    LIGHTRAG_API_KEY: str
+    LIGHTRAG_URL: str
+
     @computed_field
     @property
     def DATABASE_ASYNC_URL(self) -> PostgresDsn:
