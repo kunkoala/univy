@@ -1,0 +1,4 @@
+FROM ollama/ollama:latest
+COPY pull_models.sh /app/pull_models.sh
+RUN chmod +x /app/pull_models.sh
+ENTRYPOINT ["/app/pull_models.sh"]

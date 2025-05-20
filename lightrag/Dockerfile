@@ -33,12 +33,6 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install curl for Ollama installation
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
-
-# Install Ollama
-RUN curl -fsSL https://ollama.com/install.sh | sh
-
 # Copy only necessary files from builder
 COPY --from=builder /root/.local /root/.local
 COPY ./lightrag ./lightrag
@@ -55,9 +49,6 @@ RUN mkdir -p /app/data/rag_storage /app/data/inputs
 # Docker data directories
 ENV WORKING_DIR=/app/data/rag_storage
 ENV INPUT_DIR=/app/data/inputs
-
-# Make the script executable
-RUN chmod +x /app/pull_models.sh
 
 # Expose the default port
 EXPOSE 9621
