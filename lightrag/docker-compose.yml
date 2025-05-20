@@ -1,4 +1,13 @@
 services:
+  ollama:
+    container_name: ollama
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
   lightrag:
     container_name: lightrag
     image: ghcr.io/hkuds/lightrag:latest
@@ -19,3 +28,8 @@ services:
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      - ollama
+
+volumes:
+  ollama_data:
