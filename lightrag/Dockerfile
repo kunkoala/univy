@@ -33,6 +33,9 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Install curl for Ollama installation
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
 # Install Ollama
 RUN curl -fsSL https://ollama.com/install.sh | sh
 
@@ -40,6 +43,7 @@ RUN curl -fsSL https://ollama.com/install.sh | sh
 COPY --from=builder /root/.local /root/.local
 COPY ./lightrag ./lightrag
 COPY setup.py .
+COPY pull_models.sh /app/pull_models.sh
 
 RUN pip install ".[api]"
 # Make sure scripts in .local are usable
@@ -52,8 +56,8 @@ RUN mkdir -p /app/data/rag_storage /app/data/inputs
 ENV WORKING_DIR=/app/data/rag_storage
 ENV INPUT_DIR=/app/data/inputs
 
-# Pull the nomic-embed-text model
-RUN ollama pull nomic-embed-text
+# Make the script executable
+RUN chmod +x /app/pull_models.sh
 
 # Expose the default port
 EXPOSE 9621
