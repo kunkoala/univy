@@ -37,7 +37,6 @@ WORKDIR /app
 COPY --from=builder /root/.local /root/.local
 COPY ./lightrag ./lightrag
 COPY setup.py .
-COPY pull_models.sh /app/pull_models.sh
 
 RUN pip install ".[api]"
 # Make sure scripts in .local are usable
