@@ -1,4 +1,12 @@
-FROM ollama/ollama:latest
-COPY pull_models.sh /app/pull_models.sh
-RUN chmod +x /app/pull_models.sh
-ENTRYPOINT ["/app/pull_models.sh"]
+FROM ollama/ollama
+
+COPY ./run-ollama.sh /tmp/run-ollama.sh
+
+WORKDIR /tmp
+
+RUN chmod +x run-ollama.sh \
+    && ./run-ollama.sh
+
+EXPOSE 11434
+
+ENTRYPOINT ["/tmp/run-ollama.sh"]

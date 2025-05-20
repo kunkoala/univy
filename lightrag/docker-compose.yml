@@ -1,13 +1,14 @@
 services:
   ollama:
-  build:
-    context: .
-    dockerfile: Dockerfile.ollama # or whatever you name it
-  ports:
-    - "11434:11434"
-  volumes:
-    - ollama_data:/root/.ollama
-  restart: unless-stopped
+    container_name: ollama
+    build: 
+      context: .
+      dockerfile: Dockerfile.ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
 
   lightrag:
     container_name: lightrag
