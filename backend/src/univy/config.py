@@ -34,16 +34,12 @@ class Config(CustomBaseSettings):
     POSTGRES_HOST: str
     POSTGRES_PORT: int
     POSTGRES_DB: str
-
-    # LightRAG
-    LIGHTRAG_API_KEY: str
-    LIGHTRAG_URL: str
     
-    # Celery RabbitMQ
-    RABBITMQ_HOST: str
-    RABBITMQ_PORT: int
-    RABBITMQ_USERNAME: str
-    RABBITMQ_PASSWORD: str
+    # Celery REDIS
+    REDIS_HOST: str
+    REDIS_PORT: int
+    # REDIS_PASSWORD: str
+    REDIS_DB: int
 
     @computed_field
     @property
@@ -66,7 +62,13 @@ class Config(CustomBaseSettings):
     @computed_field
     @property
     def CELERY_BROKER_URL(self) -> str:
-        return f'amqp://{self.RABBITMQ_USERNAME}:{self.RABBITMQ_PASSWORD}@{self.RABBITMQ_HOST}:{self.RABBITMQ_PORT}//'
+        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+    
+    @computed_field
+    @property
+    def CELERY_RESULT_BACKEND(self) -> str:
+        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+    
     @model_validator(mode="after")
     def validate_sentry_non_local(self) -> "Config":
         if self.ENVIRONMENT.is_deployed and not self.SENTRY_DSN:
