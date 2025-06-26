@@ -1,7 +1,7 @@
 # custom defined
 src/univy/output/*
-output
-mylocal_db
+outputs
+uploads
 logfile
 
 # lightrag
