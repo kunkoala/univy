@@ -1,5 +1,7 @@
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
+import os
+
 
 # import sentry_sdk
 from fastapi import FastAPI
@@ -7,7 +9,13 @@ from starlette.middleware.cors import CORSMiddleware
 
 from univy.config import app_configs, settings
 from univy.api import api_router
+from univy.constants import UPLOAD_DIR, OUTPUT_DIR
 
+# TEMPORARY SOLUTION TO UPLOAD FILES LOCALLY, LATER ON CHANGE TO AWS S3
+# Each user has their own S3 bucket, so we need to create a directory for each user
+# to upload their files
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 @asynccontextmanager
 async def lifespan(_application: FastAPI) -> AsyncGenerator:

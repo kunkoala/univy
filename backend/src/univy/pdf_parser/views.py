@@ -6,7 +6,7 @@ from pathlib import Path
 import shutil
 from loguru import logger
 
-from univy.pdf_parser.constants import UPLOAD_DIR
+from univy.constants import UPLOAD_DIR
 from univy.pdf_parser.tasks import parse_pdf, scan_for_new_files, cleanup_old_task_directories
 from univy.celery_config.celery_univy import app
 
@@ -70,6 +70,7 @@ class ScanResponse(BaseModel):
             }
         }
 
+# TODO: Add another dependency file later and change to S3
 document_manager = DocumentManager(UPLOAD_DIR)
 
 

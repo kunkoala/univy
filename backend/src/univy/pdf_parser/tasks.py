@@ -3,7 +3,7 @@ from typing import List, Dict, Any
 from loguru import logger
 
 from univy.celery_config.celery_univy import app
-from univy.pdf_parser.constants import UPLOAD_DIR
+from univy.constants import UPLOAD_DIR, OUTPUT_DIR
 
 import json
 import time
@@ -19,16 +19,9 @@ from docling.datamodel.pipeline_options import (
     PdfPipelineOptions,
 )
 from docling.document_converter import DocumentConverter, PdfFormatOption
-from univy.pdf_parser.constants import UPLOAD_DIR, OUTPUT_DIR
+from univy.constants import UPLOAD_DIR, OUTPUT_DIR
 
 from univy.celery_config.celery_univy import app
-
-
-# TEMPORARY SOLUTION TO UPLOAD FILES LOCALLY, LATER ON CHANGE TO AWS S3
-# Each user has their own S3 bucket, so we need to create a directory for each user
-# to upload their files
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
 @app.task(bind=True)
