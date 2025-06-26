@@ -1,4 +1,4 @@
-from univy.celery.celery_univy import app
+from univy.celery_config.celery_univy import app
 import time
 
 @app.task
