@@ -1,0 +1,62 @@
+{
+  "examples": {
+    "basic_query": {
+      "query": "What are the main topics discussed in the uploaded documents?",
+      "mode": "hybrid"
+    },
+    "context_only": {
+      "query": "Find information about mobility measurement in orthopedics",
+      "mode": "hybrid",
+      "only_need_context": true,
+      "top_k": 3
+    },
+    "prompt_only": {
+      "query": "Explain the validation study methodology",
+      "mode": "hybrid",
+      "only_need_prompt": true,
+      "response_type": "Multiple Paragraphs"
+    },
+    "conversation": {
+      "query": "Can you elaborate on the reliability measures mentioned earlier?",
+      "mode": "hybrid",
+      "conversation_history": [
+        {
+          "role": "user",
+          "content": "What are the reliability measures in the study?"
+        },
+        {
+          "role": "assistant",
+          "content": "The study discusses several reliability measures including test-retest reliability and inter-rater reliability."
+        }
+      ],
+      "history_turns": 1
+    },
+    "specific_document": {
+      "query": "What are the key findings about telemonitoring?",
+      "mode": "local",
+      "ids": ["validation_study_telemonitor.pdf"],
+      "top_k": 5,
+      "response_type": "Bullet Points"
+    },
+    "token_limited": {
+      "query": "Summarize the VVAFER paper",
+      "mode": "hybrid",
+      "max_token_for_text_unit": 500,
+      "max_token_for_global_context": 1000,
+      "max_token_for_local_context": 1000,
+      "response_type": "Single Paragraph"
+    },
+    "custom_prompt": {
+      "query": "Analyze the methodology section",
+      "mode": "hybrid",
+      "user_prompt": "Please provide a detailed analysis of the methodology section, focusing on the research design, data collection methods, and statistical analysis approach.",
+      "response_type": "Multiple Paragraphs"
+    },
+    "resume_analysis": {
+      "query": "What are the key skills and experience mentioned in the resume?",
+      "mode": "hybrid",
+      "ids": ["Resume_Azhar_En_07042025_SWE.pdf"],
+      "response_type": "Bullet Points"
+    }
+  }
+} 
