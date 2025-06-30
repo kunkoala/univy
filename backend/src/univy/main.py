@@ -17,6 +17,7 @@ from univy.constants import UPLOAD_DIR, OUTPUT_DIR
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
+
 @asynccontextmanager
 async def lifespan(_application: FastAPI) -> AsyncGenerator:
     # Startup
@@ -42,6 +43,7 @@ app.add_middleware(
 #     )
 
 app.include_router(api_router)
+
 
 @app.get("/healthcheck", include_in_schema=False)
 async def healthcheck() -> dict[str, str]:

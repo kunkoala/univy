@@ -41,6 +41,9 @@ class Config(CustomBaseSettings):
     # REDIS_PASSWORD: str
     REDIS_DB: int
 
+    OPENAI_API_KEY: str
+    OPENAI_BASE_URL: str
+
     @computed_field
     @property
     def DATABASE_ASYNC_URL(self) -> PostgresDsn:

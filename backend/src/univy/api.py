@@ -1,6 +1,8 @@
 from fastapi import APIRouter
-from univy.pdf_parser.views import router as pdf_parser_router
+from univy.document_pipeline.views import router as document_pipeline_router
+from univy.rag.views import router as rag_router
 
 api_router = APIRouter()
 
-api_router.include_router(pdf_parser_router)
+api_router.include_router(document_pipeline_router)
+api_router.include_router(rag_router)

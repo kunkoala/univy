@@ -7,10 +7,10 @@ import shutil
 from loguru import logger
 
 from univy.constants import UPLOAD_DIR
-from univy.pdf_parser.tasks import parse_pdf, scan_for_new_files, cleanup_old_task_directories
+from univy.document_pipeline.tasks import parse_pdf_and_ingest_to_rag, scan_for_new_files, cleanup_old_task_directories
 from univy.celery_config.celery_univy import app
 
-router = APIRouter(prefix="/pdf_parser", tags=["pdf_parser"])
+router = APIRouter(prefix="/document_pipeline", tags=["document_pipeline"])
 
 
 class DocumentManager:
@@ -43,8 +43,10 @@ class InsertResponse(BaseModel):
     status: Literal["success", "duplicated", "partial_success",
                     "failure"] = Field(description="Status of the insertion")
     message: str = Field(description="Message of the insertion")
-    task_id: Optional[str] = Field(None, description="Celery task ID for tracking")
-    file_name: Optional[str] = Field(None, description="Name of the file being processed")
+    task_id: Optional[str] = Field(
+        None, description="Celery task ID for tracking")
+    file_name: Optional[str] = Field(
+        None, description="Name of the file being processed")
 
     class Config:
         json_schema_extra = {
@@ -59,7 +61,8 @@ class ScanResponse(BaseModel):
     status: Literal["success", "failure"] = Field(
         description="Status of the scan")
     message: str = Field(description="Message of the scan")
-    task_id: Optional[str] = Field(None, description="Celery task ID for tracking")
+    task_id: Optional[str] = Field(
+        None, description="Celery task ID for tracking")
 
     class Config:
         json_schema_extra = {
@@ -69,6 +72,7 @@ class ScanResponse(BaseModel):
                 "task_id": "abc123-def456-ghi789"
             }
         }
+
 
 # TODO: Add another dependency file later and change to S3
 document_manager = DocumentManager(UPLOAD_DIR)
@@ -80,16 +84,16 @@ async def scan_for_new_files_endpoint(user_id: Optional[int] = None):
     try:
         # Start the Celery task
         task = scan_for_new_files.delay(user_id)
-        
+
         return ScanResponse(
-            status="success", 
+            status="success",
             message="File scan started successfully. Check task status for results.",
             task_id=task.id
         )
     except Exception as e:
         logger.error(f"Error starting file scan: {e}")
         return ScanResponse(
-            status="failure", 
+            status="failure",
             message=f"Failed to start file scan: {str(e)}"
         )
 
@@ -105,10 +109,10 @@ async def upload_pdf(file: UploadFile = File(...)):
             shutil.copyfileobj(file.file, buffer)
 
         # Start the parsing task and get the task ID
-        task = parse_pdf.delay(file.filename)
-        
+        task = parse_pdf_and_ingest_to_rag.delay(file.filename)
+
         return InsertResponse(
-            status="success", 
+            status="success",
             message=f"File '{file.filename}' uploaded successfully. Processing will continue in the background.",
             task_id=task.id,
             file_name=file.filename
@@ -120,7 +124,7 @@ async def upload_pdf(file: UploadFile = File(...)):
 @router.get("/status")
 async def get_processing_status(file_name: str):
     """Get the status of a file being processed"""
-    
+
     try:
         result = app.AsyncResult(file_name)
         return {
@@ -130,7 +134,8 @@ async def get_processing_status(file_name: str):
         }
     except Exception as e:
         logger.error(f"Error getting status for {file_name}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get status: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get status: {str(e)}")
 
 
 @router.get("/task-status/{task_id}")
@@ -145,7 +150,8 @@ async def get_task_status(task_id: str):
         }
     except Exception as e:
         logger.error(f"Error getting task status for {task_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get task status: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get task status: {str(e)}")
 
 
 @router.post("/cleanup")
@@ -160,7 +166,8 @@ async def cleanup_old_directories(days_old: int = 7):
         }
     except Exception as e:
         logger.error(f"Error starting cleanup task: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to start cleanup: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to start cleanup: {str(e)}")
 
 
 pdf_parser_router = router
