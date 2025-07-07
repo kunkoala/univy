@@ -35,11 +35,6 @@
 - 💯 Perfect Lighthouse score
 - 💾 Neon database
 
-## 🚀 Deployment
-Easily deploy your Next.js app with <a href="https://vercel.com/">Vercel</a> by clicking the button below:
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Skolaczk/next-starter)
-
 ## 🎯 Getting started
 ### 1. Clone this template in one of three ways
 
@@ -128,8 +123,37 @@ To contribute, please follow these steps:
 4. Push your changes to the forked repository.
 5. Create a pull request.
 
-## ❤️ Support
 
-If you liked the project, I will appreciate if you leave a star. 🌟😊
+## Database Setup (with Drizzle ORM)
 
-Made by <a href="https://michalskolak.netlify.app/">Michał Skolak</a> 
+This project uses [Drizzle ORM](https://orm.drizzle.team/) for database schema management and migrations.
+
+### Codebase-First Approach
+
+If you make changes to the database schema (e.g., edit `src/lib/schema.ts`):
+
+1. **Install Drizzle Kit (if not already):**
+   ```bash
+   npm install -D drizzle-kit
+   # or
+   yarn add -D drizzle-kit
+   ```
+
+2. **Update your schema in `src/lib/schema.ts`.**
+
+3. **Push schema changes to your database:**
+   ```bash
+   npx drizzle-kit push
+   ```
+   This will automatically update your database to match your codebase schema (rapid prototyping).
+
+4. **(Optional) Generate migration files:**
+   If you want to generate SQL migration files instead, use:
+   ```bash
+   npx drizzle-kit generate
+   # Then apply with:
+   npx drizzle-kit migrate
+   ```
+
+For more details, see the official Drizzle migration documentation:  
+https://orm.drizzle.team/docs/migrations 
