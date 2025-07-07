@@ -34,7 +34,7 @@ class Config(CustomBaseSettings):
     POSTGRES_HOST: str
     POSTGRES_PORT: int
     POSTGRES_DB: str
-    
+
     # Celery REDIS
     REDIS_HOST: str
     REDIS_PORT: int
@@ -43,6 +43,9 @@ class Config(CustomBaseSettings):
 
     OPENAI_API_KEY: str
     OPENAI_BASE_URL: str
+
+    # JWT
+    AUTH_SECRET: str
 
     @computed_field
     @property
@@ -61,17 +64,17 @@ class Config(CustomBaseSettings):
             port=self.POSTGRES_PORT,
             path=self.POSTGRES_DB,
         )
-    
+
     @computed_field
     @property
     def CELERY_BROKER_URL(self) -> str:
         return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
-    
+
     @computed_field
     @property
     def CELERY_RESULT_BACKEND(self) -> str:
         return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
-    
+
     @model_validator(mode="after")
     def validate_sentry_non_local(self) -> "Config":
         if self.ENVIRONMENT.is_deployed and not self.SENTRY_DSN:

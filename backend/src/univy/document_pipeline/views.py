@@ -1,5 +1,5 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, BackgroundTasks
-from typing import Literal, List, Optional
+from typing import Literal, List, Optional, Annotated
 from pydantic import BaseModel, Field
 import os
 from pathlib import Path
@@ -9,6 +9,7 @@ from loguru import logger
 from univy.constants import UPLOAD_DIR
 from univy.document_pipeline.tasks import parse_pdf_and_ingest_to_rag, scan_for_new_files, cleanup_old_task_directories
 from univy.celery_config.celery_univy import app
+from univy.auth.security import JWT
 
 router = APIRouter(prefix="/document_pipeline", tags=["document_pipeline"])
 
@@ -79,8 +80,9 @@ document_manager = DocumentManager(UPLOAD_DIR)
 
 
 @router.post("/scan", response_model=ScanResponse)
-async def scan_for_new_files_endpoint(user_id: Optional[int] = None):
+async def scan_for_new_files_endpoint(jwt: Annotated[str, Depends(JWT)], user_id: Optional[int] = None):
     """Scan for new files using Celery"""
+
     try:
         # Start the Celery task
         task = scan_for_new_files.delay(user_id)
