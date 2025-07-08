@@ -160,7 +160,7 @@ async def get_task_status(task_id: str, user: Annotated[str, Depends(get_current
 async def cleanup_old_directories(user: Annotated[str, Depends(get_current_user)], days_old: int = 7):
     """Clean up old task directories"""
     try:
-        task = cleanup_old_task_directories.delay(days_old, user.id)
+        task = cleanup_old_task_directories.delay(days_old)
         return {
             "status": "success",
             "message": f"Cleanup task started for directories older than {days_old} days",
