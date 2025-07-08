@@ -217,38 +217,29 @@ def scan_directory_for_files(directory: Path, extensions: tuple = (".txt", ".pdf
     return files
 
 
-def cleanup_old_directories(base_dir: Path, days_old: int) -> Tuple[list, list]:
+def cleanup_all_directories(base_dir: Path) -> Tuple[list, list]:
     """
-    Clean up directories older than specified days.
+    Delete all files and directories in the given base_dir.
 
     Args:
-        base_dir: Base directory to scan
-        days_old: Age threshold in days
+        base_dir: Base directory to clean up
 
     Returns:
-        Tuple of (cleaned_directories, failed_directories)
+        Tuple of (deleted_paths, failed_paths)
     """
-    from datetime import datetime, timedelta
     import shutil
 
-    cutoff_time = datetime.now() - timedelta(days=days_old)
-    cutoff_timestamp = cutoff_time.timestamp()
+    deleted = []
+    failed = []
 
-    cleaned_dirs = []
-    failed_dirs = []
-
-    for task_dir in base_dir.iterdir():
-        if task_dir.is_dir() and task_dir.name.startswith("task_"):
-            try:
-                # Check if directory is old enough
-                dir_mtime = task_dir.stat().st_mtime
-                if dir_mtime < cutoff_timestamp:
-                    # Remove the entire task directory
-                    shutil.rmtree(task_dir)
-                    cleaned_dirs.append(str(task_dir))
-                    logger.info(f"Cleaned up old task directory: {task_dir}")
-            except Exception as e:
-                failed_dirs.append((str(task_dir), str(e)))
-                logger.error(f"Failed to clean up {task_dir}: {e}")
-
-    return cleaned_dirs, failed_dirs
+    for item in base_dir.iterdir():
+        try:
+            if item.is_dir():
+                shutil.rmtree(item)
+            else:
+                item.unlink()
+            deleted.append(str(item))
+        except Exception as e:
+            failed.append((str(item), str(e)))
+            logger.error(f"Failed to delete {item}: {e}")
+    return deleted, failed

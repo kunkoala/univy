@@ -12,7 +12,7 @@ from univy.document_pipeline.utils import (
     read_markdown_content,
     ingest_text_to_lightrag,
     scan_directory_for_files,
-    cleanup_old_directories
+    cleanup_all_directories
 )
 
 
@@ -87,16 +87,18 @@ def scan_for_new_files(self, user_id: int = None) -> Dict[str, Any]:
 
 
 @app.task(bind=True)
-def cleanup_old_task_directories(self, days_old: int = 7) -> Dict[str, Any]:
-    """Clean up task directories older than specified days"""
-    logger.info(f"Cleaning up task directories older than {days_old} days")
+def cleanup_all_task_directories(self) -> Dict[str, Any]:
+    """Delete all files and directories in OUTPUT_DIR and UPLOAD_DIR"""
+    logger.info(f"Cleaning up all files and directories in OUTPUT_DIR and UPLOAD_DIR")
 
-    output_path = Path(OUTPUT_DIR)
-    cleaned_dirs, failed_dirs = cleanup_old_directories(output_path, days_old)
+    output_deleted, output_failed = cleanup_all_directories(Path(OUTPUT_DIR))
+    upload_deleted, upload_failed = cleanup_all_directories(Path(UPLOAD_DIR))
 
     return {
         "status": "success",
-        "message": f"Cleanup completed. Removed {len(cleaned_dirs)} directories.",
-        "cleaned_directories": cleaned_dirs,
-        "failed_directories": failed_dirs
+        "message": f"Cleanup completed.",
+        "output_deleted": output_deleted,
+        "output_failed": output_failed,
+        "upload_deleted": upload_deleted,
+        "upload_failed": upload_failed
     }

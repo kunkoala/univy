@@ -7,7 +7,7 @@ import shutil
 from loguru import logger
 
 from univy.constants import UPLOAD_DIR
-from univy.document_pipeline.tasks import parse_pdf_and_ingest_to_rag, scan_for_new_files, cleanup_old_task_directories
+from univy.document_pipeline.tasks import parse_pdf_and_ingest_to_rag, scan_for_new_files, cleanup_all_task_directories
 from univy.celery_config.celery_univy import app
 from univy.auth.security import get_current_user
 
@@ -157,19 +157,20 @@ async def get_task_status(task_id: str, user: Annotated[str, Depends(get_current
 
 
 @router.post("/cleanup")
-async def cleanup_old_directories(user: Annotated[str, Depends(get_current_user)], days_old: int = 7):
-    """Clean up old task directories"""
+async def cleanup_all_directories_endpoint(user: Annotated[str, Depends(get_current_user)]):
+    """Delete all files and directories in OUTPUT_DIR and UPLOAD_DIR"""
     try:
-        task = cleanup_old_task_directories.delay(days_old)
+        task = cleanup_all_task_directories.delay()
         return {
             "status": "success",
-            "message": f"Cleanup task started for directories older than {days_old} days",
+            "message": f"Cleanup task started for all files and directories in OUTPUT_DIR and UPLOAD_DIR",
             "task_id": task.id
         }
     except Exception as e:
         logger.error(f"Error starting cleanup task: {e}")
         raise HTTPException(
-            status_code=500, detail=f"Failed to start cleanup: {str(e)}")
+            status_code=500, detail=f"Failed to start cleanup: {str(e)}"
+        )
 
 
 pdf_parser_router = router

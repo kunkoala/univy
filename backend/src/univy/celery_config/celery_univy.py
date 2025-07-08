@@ -52,7 +52,7 @@ app.conf.task_routes = {
     'univy.document_pipeline.tasks.parse_pdf': {'queue': 'pdf_processing'},
     'univy.document_pipeline.tasks.parse_pdf_and_ingest_to_rag': {'queue': 'pdf_processing'},
     'univy.document_pipeline.tasks.scan_for_new_files': {'queue': 'file_scanning'},
-    'univy.document_pipeline.tasks.cleanup_old_task_directories': {'queue': 'maintenance'},
+    'univy.document_pipeline.tasks.cleanup_all_task_directories': {'queue': 'maintenance'},
 }
 
 # Task annotations for specific task configurations
@@ -71,8 +71,8 @@ app.conf.task_annotations = {
         'rate_limit': '10/m',  # Max 10 scans per minute
         'time_limit': 300,     # 5 minutes
     },
-    'univy.document_pipeline.tasks.cleanup_old_task_directories': {
-        'rate_limit': '1/h',   # Max 1 cleanup per hour
+    'univy.document_pipeline.tasks.cleanup_all_task_directories': {
+        'rate_limit': '1/m',   # Max 1 cleanup per minute
         'time_limit': 600,     # 10 minutes
     },
     'univy.rag.tasks.query_lightrag': {
