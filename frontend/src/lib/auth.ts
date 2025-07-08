@@ -7,6 +7,7 @@ import { db, users } from "@/lib/schema";
 import { stripeServer } from "@/lib/stripe";
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
+  // TODO: Implement database session strategy with fastapi
   session: {
     strategy: "jwt",
     updateAge: 24 * 60 * 60, // this is the update age for the session, in seconds. Explanation: update age is the time after which the session will be updated. If the session is not updated, the user will be logged out.
@@ -28,6 +29,8 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
 
     //   return session;
     // },
+
+    
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
