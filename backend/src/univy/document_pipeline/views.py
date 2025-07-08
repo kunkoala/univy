@@ -9,7 +9,7 @@ from loguru import logger
 from univy.constants import UPLOAD_DIR
 from univy.document_pipeline.tasks import parse_pdf_and_ingest_to_rag, scan_for_new_files, cleanup_old_task_directories
 from univy.celery_config.celery_univy import app
-from univy.auth.security import JWT
+from univy.auth.security import get_current_user
 
 router = APIRouter(prefix="/document_pipeline", tags=["document_pipeline"])
 
@@ -80,12 +80,12 @@ document_manager = DocumentManager(UPLOAD_DIR)
 
 
 @router.post("/scan", response_model=ScanResponse)
-async def scan_for_new_files_endpoint(jwt: Annotated[str, Depends(JWT)], user_id: Optional[int] = None):
+async def scan_for_new_files_endpoint(user: Annotated[str, Depends(get_current_user)]):
     """Scan for new files using Celery"""
 
     try:
         # Start the Celery task
-        task = scan_for_new_files.delay(user_id)
+        task = scan_for_new_files.delay(user.id)
 
         return ScanResponse(
             status="success",
@@ -101,7 +101,7 @@ async def scan_for_new_files_endpoint(jwt: Annotated[str, Depends(JWT)], user_id
 
 
 @router.post("/upload", response_model=InsertResponse)
-async def upload_pdf(file: UploadFile = File(...)):
+async def upload_pdf(user: Annotated[str, Depends(get_current_user)], file: UploadFile = File(...)):
     # TODO: Implement the upload logic
     try:
         file_path = document_manager.input_dir / file.filename
@@ -124,7 +124,7 @@ async def upload_pdf(file: UploadFile = File(...)):
 
 
 @router.get("/status")
-async def get_processing_status(file_name: str):
+async def get_processing_status(file_name: str, user: Annotated[str, Depends(get_current_user)]):
     """Get the status of a file being processed"""
 
     try:
@@ -141,7 +141,7 @@ async def get_processing_status(file_name: str):
 
 
 @router.get("/task-status/{task_id}")
-async def get_task_status(task_id: str):
+async def get_task_status(task_id: str, user: Annotated[str, Depends(get_current_user)]):
     """Get the status of a Celery task"""
     try:
         result = app.AsyncResult(task_id)
@@ -157,10 +157,10 @@ async def get_task_status(task_id: str):
 
 
 @router.post("/cleanup")
-async def cleanup_old_directories(days_old: int = 7):
+async def cleanup_old_directories(user: Annotated[str, Depends(get_current_user)], days_old: int = 7):
     """Clean up old task directories"""
     try:
-        task = cleanup_old_task_directories.delay(days_old)
+        task = cleanup_old_task_directories.delay(days_old, user.id)
         return {
             "status": "success",
             "message": f"Cleanup task started for directories older than {days_old} days",

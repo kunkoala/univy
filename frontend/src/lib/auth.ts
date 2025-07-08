@@ -30,7 +30,6 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     //   return session;
     // },
 
-    
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;

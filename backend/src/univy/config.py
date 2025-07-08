@@ -46,6 +46,7 @@ class Config(CustomBaseSettings):
 
     # JWT
     AUTH_SECRET: str
+    CSRF_PREVENTION_ENABLED: bool = False
 
     @computed_field
     @property
