@@ -21,6 +21,7 @@ dependencies = [
     "graspologic>=3.4.1",
     "nano-vectordb>=0.0.4.3",
     "fastapi-nextauth-jwt>=2.1.1",
+    "litellm>=1.74.0.post1",
 ]
 
 [tool.poetry]
