@@ -4,12 +4,15 @@ import os
 
 
 # import sentry_sdk
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from starlette.middleware.cors import CORSMiddleware
 
 from univy.config import app_configs, settings
 from univy.api import api_router
 from univy.constants import UPLOAD_DIR, OUTPUT_DIR
+
+from fastapi_nextauth_jwt.exceptions import NextAuthJWTException
+from fastapi.responses import JSONResponse
 
 # TEMPORARY SOLUTION TO UPLOAD FILES LOCALLY, LATER ON CHANGE TO AWS S3
 # Each user has their own S3 bucket, so we need to create a directory for each user
@@ -43,6 +46,16 @@ app.add_middleware(
 #     )
 
 app.include_router(api_router)
+
+
+@app.exception_handler(NextAuthJWTException)
+async def unicorn_exception_handler(request: Request, exc: NextAuthJWTException):
+    return JSONResponse(
+        status_code=401,
+        content={"message": exc.message},
+    )
+
+app.add_exception_handler(NextAuthJWTException, unicorn_exception_handler)
 
 
 @app.get("/healthcheck", include_in_schema=False)

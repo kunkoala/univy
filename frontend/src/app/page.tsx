@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AuthControls } from "@/components/auth-controls";
+import ButtonFastapiTest from "@/components/button-fastapi-test";
 import { Icons } from "@/components/icons";
 import { StripeButton } from "@/components/stripe-button";
 import { buttonVariants } from "@/components/ui/button";
@@ -54,6 +55,7 @@ const HomePage = async () => {
           </Link>
         </div>
       </section>
+      <ButtonFastapiTest session={session} />
       <footer className="text-muted-foreground absolute bottom-3 w-full text-center text-sm">
         © {new Date().getFullYear()} By{" "}
         <Link
