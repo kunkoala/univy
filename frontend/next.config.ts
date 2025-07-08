@@ -4,12 +4,12 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
-        source: "/fastapi",
-        destination: "http://127.0.0.1:8000",
+        source: "/fastapi/:path*",
+        destination: "http://127.0.0.1:8000/:path*",
       },
     ];
   },
-  allowedDevOrigins: ["127.0.0.1"],
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
   images: {
     remotePatterns: [
       {
