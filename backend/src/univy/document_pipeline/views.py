@@ -7,11 +7,57 @@ import shutil
 from loguru import logger
 
 from univy.constants import UPLOAD_DIR
-from univy.document_pipeline.tasks import parse_pdf_and_ingest_to_rag, scan_for_new_files, cleanup_all_task_directories
+from univy.document_pipeline.tasks import pipeline_process_pdf, scan_for_new_files, cleanup_all_task_directories
 from univy.celery_config.celery_univy import app
 from univy.auth.security import get_current_user
 
 router = APIRouter(prefix="/document_pipeline", tags=["document_pipeline"])
+
+
+def sanitize_filename(filename: str, input_dir: Path) -> str:
+    """
+    Sanitize uploaded filename to prevent Path Traversal attacks.
+
+    Args:
+        filename: The original filename from the upload
+        input_dir: The target input directory
+
+    Returns:
+        str: Sanitized filename that is safe to use
+
+    Raises:
+        HTTPException: If the filename is unsafe or invalid
+    """
+    # Basic validation
+    if not filename or not filename.strip():
+        raise HTTPException(status_code=400, detail="Filename cannot be empty")
+
+    # Remove path separators and traversal sequences
+    clean_name = filename.replace("/", "").replace("\\", "")
+    clean_name = clean_name.replace("..", "")
+
+    # Remove control characters and null bytes
+    clean_name = "".join(c for c in clean_name if ord(c) >= 32 and c != "\x7f")
+
+    # Remove leading/trailing whitespace and dots
+    clean_name = clean_name.strip().strip(".")
+
+    # Check if anything is left after sanitization
+    if not clean_name:
+        raise HTTPException(
+            status_code=400, detail="Invalid filename after sanitization"
+        )
+
+    # Verify the final path stays within the input directory
+    try:
+        final_path = (input_dir / clean_name).resolve()
+        if not final_path.is_relative_to(input_dir.resolve()):
+            raise HTTPException(
+                status_code=400, detail="Unsafe filename detected")
+    except (OSError, ValueError):
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
+    return clean_name
 
 
 class DocumentManager:
@@ -104,14 +150,23 @@ async def scan_for_new_files_endpoint(user: Annotated[str, Depends(get_current_u
 async def upload_pdf(user: Annotated[str, Depends(get_current_user)], file: UploadFile = File(...)):
     # TODO: Implement the upload logic
     try:
-        file_path = document_manager.input_dir / file.filename
+        safe_filename = sanitize_filename(
+            file.filename, document_manager.input_dir)
+
+        if not document_manager.is_supported_file(safe_filename):
+            raise HTTPException(
+                status_code=400, detail=f"Unsupported file type: {file.filename}")
+
+        file_path = document_manager.input_dir / safe_filename
+
         if file_path.exists():
             return InsertResponse(status="duplicated", message=f"File '{file.filename}' already exists in the upload directory.")
+
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
         # Start the parsing task and get the task ID
-        task = parse_pdf_and_ingest_to_rag.delay(file.filename)
+        task = pipeline_process_pdf.delay(file.filename)
 
         return InsertResponse(
             status="success",

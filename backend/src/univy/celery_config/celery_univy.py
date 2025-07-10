@@ -49,23 +49,17 @@ app.conf.update(
 
 # Task routing - route different tasks to different queues
 app.conf.task_routes = {
-    'univy.document_pipeline.tasks.parse_pdf': {'queue': 'pdf_processing'},
-    'univy.document_pipeline.tasks.parse_pdf_and_ingest_to_rag': {'queue': 'pdf_processing'},
+    'univy.document_pipeline.tasks.pipeline_process_pdf': {'queue': 'pdf_processing'},
     'univy.document_pipeline.tasks.scan_for_new_files': {'queue': 'file_scanning'},
     'univy.document_pipeline.tasks.cleanup_all_task_directories': {'queue': 'maintenance'},
 }
 
 # Task annotations for specific task configurations
 app.conf.task_annotations = {
-    'univy.document_pipeline.tasks.parse_pdf': {
+    'univy.document_pipeline.tasks.pipeline_process_pdf': {
         'rate_limit': '3/m',  # Max 2 PDF parsing tasks per minute
         'time_limit': 1800,   # 30 minutes
         'soft_time_limit': 1500,  # 25 minutes
-    },
-    'univy.document_pipeline.tasks.parse_pdf_and_ingest_to_rag': {
-        'rate_limit': '3/m',  # Max 1 combined task per minute
-        'time_limit': 3600,   # 60 minutes (longer for combined task)
-        'soft_time_limit': 3300,  # 55 minutes
     },
     'univy.document_pipeline.tasks.scan_for_new_files': {
         'rate_limit': '10/m',  # Max 10 scans per minute
@@ -88,15 +82,6 @@ app.conf.task_annotations = {
 # Worker pool settings
 app.conf.worker_pool = 'prefork'  # Use prefork pool for CPU-intensive tasks
 app.conf.worker_concurrency = 2   # Number of worker processes
-
-# Beat schedule for periodic tasks (if needed)
-app.conf.beat_schedule = {
-    'cleanup-old-directories': {
-        'task': 'univy.document_pipeline.tasks.cleanup_old_task_directories',
-        'schedule': 86400.0,  # Run daily (24 hours)
-        'args': (7,),  # Clean up directories older than 7 days
-    },
-}
 
 if __name__ == '__main__':
     app.start()
