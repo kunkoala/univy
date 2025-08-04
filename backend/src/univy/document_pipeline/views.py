@@ -92,7 +92,7 @@ class InsertResponse(BaseModel):
     message: str = Field(description="Message of the insertion")
     task_id: Optional[str] = Field(
         None, description="Celery task ID for tracking")
-    file_name: Optional[str] = Field(
+    file_name: Optional[List[str]] = Field(
         None, description="Name of the file being processed")
 
     class Config:
@@ -147,35 +147,44 @@ async def scan_for_new_files_endpoint(user: Annotated[str, Depends(get_current_u
 
 
 @router.post("/upload", response_model=InsertResponse)
-async def upload_pdf(user: Annotated[str, Depends(get_current_user)], file: UploadFile = File(...)):
+async def upload_pdf(user: Annotated[str, Depends(get_current_user)], files: list[UploadFile] = File(...)):
     # TODO: Implement the upload logic
     try:
-        safe_filename = sanitize_filename(
-            file.filename, document_manager.input_dir)
+        safe_filenames = []
+        for file in files:
+            safe_filename = sanitize_filename(
+                file.filename, document_manager.input_dir)
+            safe_filenames.append(safe_filename)
 
-        if not document_manager.is_supported_file(safe_filename):
-            raise HTTPException(
-                status_code=400, detail=f"Unsupported file type: {file.filename}")
+        for safe_filename in safe_filenames:
+            if not document_manager.is_supported_file(safe_filename):
+                raise HTTPException(
+                    status_code=400, detail=f"Unsupported file type: {safe_filename}")
 
-        file_path = document_manager.input_dir / safe_filename
+        file_paths = [document_manager.input_dir / safe_filename
+                      for safe_filename in safe_filenames]
 
-        if file_path.exists():
-            return InsertResponse(status="duplicated", message=f"File '{file.filename}' already exists in the upload directory.")
+        for upload_file, file_path in zip(files, file_paths):
+            if file_path.exists():
+                return InsertResponse(status="duplicated", message=f"File '{upload_file.filename}' already exists in the upload directory.")
 
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        # Save each uploaded file to disk
+        for upload_file, file_path in zip(files, file_paths):
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(upload_file.file, buffer)
+            upload_file.file.close()
 
         # Start the parsing task and get the task ID
-        task = pipeline_process_pdf.delay(file.filename)
+        task = pipeline_process_pdf.delay(safe_filenames)
 
         return InsertResponse(
             status="success",
-            message=f"File '{file.filename}' uploaded successfully. Processing will continue in the background.",
+            message=f"Files '{safe_filenames}' uploaded successfully. Processing will continue in the background.",
             task_id=task.id,
-            file_name=file.filename
+            file_name=safe_filenames
         )
     except Exception as e:
-        return InsertResponse(status="failure", message=f"Failed to upload file '{file.filename}': {str(e)}")
+        return InsertResponse(status="failure", message=f"Failed to upload files '{safe_filenames}': {str(e)}")
 
 
 @router.get("/status")
