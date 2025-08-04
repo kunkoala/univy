@@ -12,7 +12,7 @@ import time
 import json
 
 from univy.celery_config.celery_univy import app
-from univy.constants import UPLOAD_DIR, OUTPUT_DIR
+from univy.constants import UPLOAD_DIR, OUTPUT_DIR, RAG_DIR
 from univy.document_pipeline.utils import scan_directory_for_files, cleanup_all_directories, ingest_texts_to_lightrag, export_documents
 
 
@@ -131,12 +131,13 @@ def scan_for_new_files(self, user_id: int = None) -> Dict[str, Any]:
 
 @app.task(bind=True)
 def cleanup_all_task_directories(self) -> Dict[str, Any]:
-    """Delete all files and directories in OUTPUT_DIR and UPLOAD_DIR"""
+    """Delete all files and directories in OUTPUT_DIR, UPLOAD_DIR, and RAG_DIR"""
     logger.info(
-        f"Cleaning up all files and directories in OUTPUT_DIR and UPLOAD_DIR")
+        f"Cleaning up all files and directories in OUTPUT_DIR, UPLOAD_DIR, and RAG_DIR")
 
     output_deleted, output_failed = cleanup_all_directories(Path(OUTPUT_DIR))
     upload_deleted, upload_failed = cleanup_all_directories(Path(UPLOAD_DIR))
+    rag_deleted, rag_failed = cleanup_all_directories(Path(RAG_DIR))
 
     return {
         "status": "success",
@@ -144,5 +145,7 @@ def cleanup_all_task_directories(self) -> Dict[str, Any]:
         "output_deleted": output_deleted,
         "output_failed": output_failed,
         "upload_deleted": upload_deleted,
-        "upload_failed": upload_failed
+        "upload_failed": upload_failed,
+        "rag_deleted": rag_deleted,
+        "rag_failed": rag_failed
     }

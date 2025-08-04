@@ -2,6 +2,7 @@ from enum import Enum
 
 UPLOAD_DIR = "uploads"
 OUTPUT_DIR = "outputs"
+RAG_DIR = "rag_storage"
 
 DB_NAMING_CONVENTION = {
     "ix": "%(column_0_label)s_idx",
