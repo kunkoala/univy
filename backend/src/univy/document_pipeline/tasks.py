@@ -3,6 +3,7 @@ from typing import List, Dict, Any
 from loguru import logger
 import asyncio
 
+from docling.backend.docling_parse_v4_backend import DoclingParseV4DocumentBackend
 from docling.datamodel.accelerator_options import AcceleratorDevice, AcceleratorOptions
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
@@ -12,25 +13,29 @@ import json
 
 from univy.celery_config.celery_univy import app
 from univy.constants import UPLOAD_DIR, OUTPUT_DIR
-from univy.document_pipeline.utils import scan_directory_for_files, cleanup_all_directories, ingest_text_to_lightrag
+from univy.document_pipeline.utils import scan_directory_for_files, cleanup_all_directories, ingest_texts_to_lightrag, export_documents
 
 
 @app.task(bind=True)
-def pipeline_process_pdf(self, pdf_file_name, do_ocr=False, use_gpu=False, text_output=False, markdown_output=True, doctags_output=True, json_output=True):
-    logger.info(f"Parsing PDF file: {pdf_file_name}")
+def pipeline_process_pdf(self, pdf_file_names: List[str], do_ocr=False, use_gpu=False, markdown_output=True, doctags_output=True, json_output=True, num_threads=4):
+    logger.info(f"=== PARSING PDF FILES ===")
+
+    # Create task-specific output directory
+    task_id = self.request.id
+    task_output_dir = Path(OUTPUT_DIR) / f"task_{task_id}"
+    task_output_dir.mkdir(parents=True, exist_ok=True)
+    logger.info(f"Created task-specific output directory {task_output_dir}")
+
+    input_doc_paths = [
+        Path(UPLOAD_DIR) / pdf_file_name for pdf_file_name in pdf_file_names]
+
+    logger.info(f"Parsing PDF files: {input_doc_paths}")
 
     try:
-        input_doc_path = Path(UPLOAD_DIR) / pdf_file_name
-        if not input_doc_path.exists():
-            raise FileNotFoundError(
-                f"File {pdf_file_name} not found in {UPLOAD_DIR}")
-
-        # Create task-specific output directory
-        task_id = self.request.id
-        task_output_dir = Path(OUTPUT_DIR) / f"task_{task_id}"
-        task_output_dir.mkdir(parents=True, exist_ok=True)
-
-        logger.info(f"Created output directory: {task_output_dir}")
+        for input_doc_path in input_doc_paths:
+            if not input_doc_path.exists():
+                raise FileNotFoundError(
+                    f"File {input_doc_path} not found in {UPLOAD_DIR}")
 
         # Docling Parse with EasyOCR
         # ----------------------
@@ -38,13 +43,14 @@ def pipeline_process_pdf(self, pdf_file_name, do_ocr=False, use_gpu=False, text_
         pipeline_options.do_ocr = do_ocr
         pipeline_options.ocr_options.use_gpu = use_gpu
         pipeline_options.accelerator_options = AcceleratorOptions(
-            num_threads=4, device=AcceleratorDevice.AUTO
+            num_threads=num_threads, device=AcceleratorDevice.AUTO
         )
+        pipeline_options.generate_page_images = True
 
         doc_converter = DocumentConverter(
             format_options={
                 InputFormat.PDF: PdfFormatOption(
-                    pipeline_options=pipeline_options)
+                    pipeline_options=pipeline_options, backend=DoclingParseV4DocumentBackend)
             }
         )
 
@@ -53,64 +59,53 @@ def pipeline_process_pdf(self, pdf_file_name, do_ocr=False, use_gpu=False, text_
         ###########################################################################
 
         start_time = time.time()
-        conv_result = doc_converter.convert(input_doc_path)
+        conv_result = doc_converter.convert_all(
+            input_doc_paths, raises_on_error=False)  # let conversion run through all files
+
+        success_count, partial_success_count, failure_count, generated_files, converted_texts_lightrag_input, converted_file_paths = export_documents(
+            conv_result, task_output_dir, markdown_output=markdown_output, doctags_output=doctags_output, json_output=json_output)
+
+        logger.info(
+            f"converted_texts_lightrag_input: {converted_texts_lightrag_input}")
+
         end_time = time.time() - start_time
 
         logger.info(f"Document converted in {end_time:.2f} seconds.")
 
-        # Export results to task-specific directory
-        doc_filename = conv_result.input.file.stem
-        generated_files = []
-
-        # Export Deep Search document JSON format:
-        if json_output:
-            json_file = task_output_dir / f"{doc_filename}.json"
-            with json_file.open("w", encoding="utf-8") as fp:
-                fp.write(json.dumps(conv_result.document.export_to_dict()))
-            generated_files.append(str(json_file))
-
-        # Export Text format:
-        if text_output:
-            txt_file = task_output_dir / f"{doc_filename}.txt"
-            with txt_file.open("w", encoding="utf-8") as fp:
-                fp.write(conv_result.document.export_to_text())
-            generated_files.append(str(txt_file))
-
-        # Export Markdown format:
-        if markdown_output:
-            md_file = task_output_dir / f"{doc_filename}.md"
-            with md_file.open("w", encoding="utf-8") as fp:
-                fp.write(conv_result.document.export_to_markdown())
-            generated_files.append(str(md_file))
-
-        # Export Document Tags format:
-        if doctags_output:
-            doctags_file = task_output_dir / f"{doc_filename}.doctags"
-            with doctags_file.open("w", encoding="utf-8") as fp:
-                fp.write(conv_result.document.export_to_doctags())
-            generated_files.append(str(doctags_file))
-
+        ingest_time = time.time()
         # Ingest text to LightRAG
-        asyncio.run(ingest_text_to_lightrag(
-            conv_result.document.export_to_doctags(), pdf_file_name))
+        logger.info(
+            f"Ingesting {len(converted_texts_lightrag_input)} texts to LightRAG")
+
+        asyncio.run(ingest_texts_to_lightrag(
+            converted_texts_lightrag_input, converted_file_paths))
+
+        ingest_time = time.time() - ingest_time
+        logger.info(
+            f"Ingested texts to LightRAG in {ingest_time:.2f} seconds.")
 
         return {
             "status": "success",
-            "message": f"PDF parsing completed for {pdf_file_name}",
+            "message": f"PDF parsing completed for {pdf_file_names}",
             "task_id": task_id,
             "output_directory": str(task_output_dir),
-            "generated_files": generated_files,
             "processing_time": end_time,
-            "original_file": pdf_file_name
+            "processing_results": {
+                "success_count": success_count,
+                "partial_success_count": partial_success_count,
+                "failure_count": failure_count
+            },
+            "generated_files": generated_files,
+            "original_file": pdf_file_names
         }
 
     except Exception as e:
-        logger.error(f"Error parsing PDF {pdf_file_name}: {e}")
+        logger.error(f"Error parsing PDF {pdf_file_names}: {e}")
         return {
             "status": "error",
-            "message": f"Failed to parse PDF {pdf_file_name}: {str(e)}",
+            "message": f"Failed to parse PDF {pdf_file_names}: {str(e)}",
             "task_id": self.request.id if hasattr(self, 'request') else None,
-            "original_file": pdf_file_name
+            "original_file": pdf_file_names
         }
 
 
