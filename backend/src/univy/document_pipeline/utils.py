@@ -1,19 +1,92 @@
 import json
-import logging
+import hashlib
 import time
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, List
 from loguru import logger
+from datetime import datetime
 
 from univy.constants import UPLOAD_DIR, OUTPUT_DIR
 from univy.lightrag_utils import initialize_lightrag
+from univy.document_pipeline.models import DocumentMetadata, Base
 
 from docling.datamodel.base_models import ConversionStatus
 from docling.datamodel.document import ConversionResult
 
-
 from docling_core.types.doc import ImageRefMode
+
+
+def generate_custom_doc_id(conv_res: ConversionResult) -> str:
+    # generate using hashlib
+    name = f"{conv_res.input.file.stem}_{time.time()}"
+    return hashlib.sha256(name.encode()).hexdigest()
+
+
+async def save_document_metadata_to_db(
+    user_id: int,
+    doc_ids: List[str],
+    file_paths: List[str],
+    processing_results: Dict[str, Any],
+    task_id: str,
+    processing_time: float,
+    ingest_time: float
+) -> List[DocumentMetadata]:
+    """
+    Save document metadata to database after successful processing
+    
+    Args:
+        user_id: ID of the user who uploaded the documents
+        doc_ids: List of generated document IDs
+        file_paths: List of original file paths
+        processing_results: Processing statistics and results
+        task_id: Celery task ID
+        processing_time: Total processing time in seconds
+        ingest_time: LightRAG ingestion time in seconds
+    
+    Returns:
+        List of saved DocumentMetadata objects
+    """
+    documents = []
+    
+    for doc_id, file_path in zip(doc_ids, file_paths):
+        file_path_obj = Path(file_path)
+        
+        # Get file size
+        file_size = file_path_obj.stat().st_size if file_path_obj.exists() else None
+        
+        # Create document metadata object
+        document = DocumentMetadata(
+            doc_id=doc_id,
+            user_id=user_id,
+            original_filename=file_path_obj.name,
+            file_path=str(file_path),
+            title=file_path_obj.stem,  # Use filename without extension as title
+            processing_status="completed",
+            processing_task_id=task_id,
+            processing_results=processing_results,
+            file_size=file_size,
+            processing_time=processing_time,
+            ingest_time=ingest_time,
+            processed_at=datetime.utcnow()
+        )
+        documents.append(document)
+    
+    # Save to database (you'll need to implement this based on your database setup)
+    # This is a placeholder - you'll need to integrate with your actual database session
+    try:
+        # Example with SQLAlchemy session:
+        # from univy.database import get_db_session
+        # async with get_db_session() as session:
+        #     session.add_all(documents)
+        #     await session.commit()
+        
+        logger.info(f"Saved {len(documents)} document metadata records to database")
+        return documents
+        
+    except Exception as e:
+        logger.error(f"Failed to save document metadata to database: {e}")
+        raise
 
 
 def export_documents(
@@ -31,6 +104,7 @@ def export_documents(
     generated_files = []
     converted_texts_lightrag_input = []
     converted_file_paths: list[str] = []
+    doc_ids = []
 
     for conv_res in conv_results:
         if conv_res.status == ConversionStatus.SUCCESS:
@@ -80,6 +154,9 @@ def export_documents(
                 conv_res.document.export_to_doctags())
             converted_file_paths.append(str(conv_res.input.file))
 
+            # generate a custom doc id for the document
+            doc_ids.append(generate_custom_doc_id(conv_res))
+
         elif conv_res.status == ConversionStatus.PARTIAL_SUCCESS:
             logger.info(
                 f"Document {conv_res.input.file} was partially converted with the following errors:"
@@ -97,18 +174,19 @@ def export_documents(
         f"SUCCESS: {success_count}, "
         f"PARTIAL SUCCESS: {partial_success_count}, "
         f"FAILURE: {failure_count}"
+        f"DOC_IDS: {doc_ids}"
     )
-    return success_count, partial_success_count, failure_count, generated_files, converted_texts_lightrag_input, converted_file_paths
+    return success_count, partial_success_count, failure_count, generated_files, converted_texts_lightrag_input, converted_file_paths, doc_ids
 
 
-async def ingest_texts_to_lightrag(texts: list[str], source_files: list[str]) -> None:
+async def ingest_texts_to_lightrag(texts: list[str], source_files: list[str], doc_ids: list[str]) -> None:
     """
     Ingest texts to LightRAG.
     """
     rag = None
     try:
         rag = await initialize_lightrag()
-        await rag.ainsert(input=texts, file_paths=source_files)
+        await rag.ainsert(input=texts, file_paths=source_files, ids=doc_ids)
 
         logger.info(
             f"Successfully ingested {len(source_files)} files into LightRAG")

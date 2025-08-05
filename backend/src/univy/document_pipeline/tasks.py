@@ -13,11 +13,11 @@ import json
 
 from univy.celery_config.celery_univy import app
 from univy.constants import UPLOAD_DIR, OUTPUT_DIR, RAG_DIR
-from univy.document_pipeline.utils import scan_directory_for_files, cleanup_all_directories, ingest_texts_to_lightrag, export_documents
+from univy.document_pipeline.utils import scan_directory_for_files, cleanup_all_directories, ingest_texts_to_lightrag, export_documents, save_document_metadata_to_db
 
 
 @app.task(bind=True)
-def pipeline_process_pdf(self, pdf_file_names: List[str], do_ocr=False, use_gpu=False, markdown_output=True, doctags_output=True, json_output=True, num_threads=4):
+def pipeline_process_pdf(self, pdf_file_names: List[str], user_id: int, do_ocr=False, use_gpu=False, markdown_output=True, doctags_output=True, json_output=True, num_threads=4):
     logger.info(f"=== PARSING PDF FILES ===")
 
     # Create task-specific output directory
@@ -62,7 +62,7 @@ def pipeline_process_pdf(self, pdf_file_names: List[str], do_ocr=False, use_gpu=
         conv_result = doc_converter.convert_all(
             input_doc_paths, raises_on_error=False)  # let conversion run through all files
 
-        success_count, partial_success_count, failure_count, generated_files, converted_texts_lightrag_input, converted_file_paths = export_documents(
+        success_count, partial_success_count, failure_count, generated_files, converted_texts_lightrag_input, converted_file_paths, doc_ids = export_documents(
             conv_result, task_output_dir, markdown_output=markdown_output, doctags_output=doctags_output, json_output=json_output)
 
         logger.info(
@@ -78,14 +78,39 @@ def pipeline_process_pdf(self, pdf_file_names: List[str], do_ocr=False, use_gpu=
             f"Ingesting {len(converted_texts_lightrag_input)} texts to LightRAG")
 
         asyncio.run(ingest_texts_to_lightrag(
-            converted_texts_lightrag_input, converted_file_paths))
+            converted_texts_lightrag_input, converted_file_paths, doc_ids))
 
         ingest_time = time.time() - ingest_time
         logger.info(
             f"Ingested texts to LightRAG in {ingest_time:.2f} seconds.")
 
+        # Save document metadata to database
+        processing_results = {
+            "success_count": success_count,
+            "partial_success_count": partial_success_count,
+            "failure_count": failure_count,
+            "generated_files": generated_files
+        }
+        
+        documents = asyncio.run(save_document_metadata_to_db(
+            user_id=user_id,
+            doc_ids=doc_ids,
+            file_paths=converted_file_paths,
+            processing_results=processing_results,
+            task_id=task_id,
+            processing_time=end_time,
+            ingest_time=ingest_time
+        ))
+
+        # Trigger smart notes generation for each document
+        from univy.smart_notes.tasks import generate_smart_notes_task
+        for doc_id in doc_ids:
+            generate_smart_notes_task.delay(doc_id, user_id)
+
         return {
             "status": "success",
+            "doc_ids": doc_ids,
+            "documents": [{"doc_id": doc.doc_id, "title": doc.title, "status": doc.processing_status} for doc in documents],
             "message": f"PDF parsing completed for {pdf_file_names}",
             "task_id": task_id,
             "output_directory": str(task_output_dir),

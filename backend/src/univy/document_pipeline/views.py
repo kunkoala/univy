@@ -148,7 +148,6 @@ async def scan_for_new_files_endpoint(user: Annotated[str, Depends(get_current_u
 
 @router.post("/upload", response_model=InsertResponse)
 async def upload_pdf(user: Annotated[str, Depends(get_current_user)], files: list[UploadFile] = File(...)):
-    # TODO: Implement the upload logic
     try:
         safe_filenames = []
         for file in files:
@@ -175,7 +174,8 @@ async def upload_pdf(user: Annotated[str, Depends(get_current_user)], files: lis
             upload_file.file.close()
 
         # Start the parsing task and get the task ID
-        task = pipeline_process_pdf.delay(safe_filenames)
+        # Pass user_id to the task
+        task = pipeline_process_pdf.delay(safe_filenames, user_id=int(user.id))
 
         return InsertResponse(
             status="success",
@@ -185,6 +185,13 @@ async def upload_pdf(user: Annotated[str, Depends(get_current_user)], files: lis
         )
     except Exception as e:
         return InsertResponse(status="failure", message=f"Failed to upload files '{safe_filenames}': {str(e)}")
+
+
+@router.get("/get-doc-ids")
+async def get_doc_ids(user: Annotated[str, Depends(get_current_user)]):
+    """Get the doc ids of all the files in the upload directory"""
+    # TODO: make a helper function in utils to grab all doc_id's saved in the database
+    return document_manager
 
 
 @router.get("/status")
