@@ -227,7 +227,7 @@ async def get_task_status(task_id: str, user: Annotated[str, Depends(get_current
             status_code=500, detail=f"Failed to get task status: {str(e)}")
 
 
-@router.post("/cleanup")
+@router.delete("/cleanup")
 async def cleanup_all_directories_endpoint(user: Annotated[str, Depends(get_current_user)]):
     """Delete all files and directories in OUTPUT_DIR and UPLOAD_DIR"""
     try:

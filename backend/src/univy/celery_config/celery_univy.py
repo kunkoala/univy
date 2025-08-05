@@ -50,7 +50,7 @@ app.conf.update(
 # Task routing - route different tasks to different queues
 app.conf.task_routes = {
     'univy.document_pipeline.tasks.pipeline_process_pdf': {'queue': 'pdf_processing'},
-    'univy.document_pipeline.tasks.scan_for_new_files': {'queue': 'file_scanning'},
+    'univy.document_pipeline.tasks.scan_for_new_files': {'queue': 'maintenance'},
     'univy.document_pipeline.tasks.cleanup_all_task_directories': {'queue': 'maintenance'},
 }
 
