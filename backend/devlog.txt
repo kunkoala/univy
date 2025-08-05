@@ -1,0 +1,2 @@
+- fixed batching processing not working:
+    - the problem was the redundant upload file endpoint which uses the same uploadFile stream, and the format of the input for ingestion being a posix path instead of string (which is required by lightrag)
